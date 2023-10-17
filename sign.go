@@ -6,9 +6,11 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	_ "crypto/sha1"
+	"crypto/sha256"
 	_ "crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -36,7 +38,6 @@ func NewDefaultSigningContext(ks X509KeyStore) *SigningContext {
 		Hash:          crypto.SHA256,
 		KeyStore:      ks,
 		IdAttribute:   DefaultIdAttr,
-		Prefix:        DefaultPrefix,
 		Canonicalizer: MakeC14N11Canonicalizer(),
 	}
 }
@@ -53,7 +54,6 @@ func NewSigningContext(signer crypto.Signer, certs [][]byte) (*SigningContext, e
 	ctx := &SigningContext{
 		Hash:          crypto.SHA256,
 		IdAttribute:   DefaultIdAttr,
-		Prefix:        DefaultPrefix,
 		Canonicalizer: MakeC14N11Canonicalizer(),
 
 		signer: signer,
@@ -170,15 +170,15 @@ func (ctx *SigningContext) constructSignedInfo(el *etree.Element, enveloped bool
 	}
 
 	// /SignedInfo/CanonicalizationMethod
-	canonicalizationMethod := ctx.createNamespacedElement(signedInfo, CanonicalizationMethodTag)
+	canonicalizationMethod := ctx.createElement(signedInfo, CanonicalizationMethodTag)
 	canonicalizationMethod.CreateAttr(AlgorithmAttr, string(ctx.Canonicalizer.Algorithm()))
 
 	// /SignedInfo/SignatureMethod
-	signatureMethod := ctx.createNamespacedElement(signedInfo, SignatureMethodTag)
+	signatureMethod := ctx.createElement(signedInfo, SignatureMethodTag)
 	signatureMethod.CreateAttr(AlgorithmAttr, signatureMethodIdentifier)
 
 	// /SignedInfo/Reference
-	reference := ctx.createNamespacedElement(signedInfo, ReferenceTag)
+	reference := ctx.createElement(signedInfo, ReferenceTag)
 
 	dataId := el.SelectAttrValue(ctx.IdAttribute, "")
 	if dataId == "" {
@@ -188,20 +188,17 @@ func (ctx *SigningContext) constructSignedInfo(el *etree.Element, enveloped bool
 	}
 
 	// /SignedInfo/Reference/Transforms
-	transforms := ctx.createNamespacedElement(reference, TransformsTag)
+	transforms := ctx.createElement(reference, TransformsTag)
 	if enveloped {
-		envelopedTransform := ctx.createNamespacedElement(transforms, TransformTag)
+		envelopedTransform := ctx.createElement(transforms, TransformTag)
 		envelopedTransform.CreateAttr(AlgorithmAttr, EnvelopedSignatureAltorithmId.String())
 	}
-	canonicalizationAlgorithm := ctx.createNamespacedElement(transforms, TransformTag)
-	canonicalizationAlgorithm.CreateAttr(AlgorithmAttr, string(ctx.Canonicalizer.Algorithm()))
-
 	// /SignedInfo/Reference/DigestMethod
-	digestMethod := ctx.createNamespacedElement(reference, DigestMethodTag)
+	digestMethod := ctx.createElement(reference, DigestMethodTag)
 	digestMethod.CreateAttr(AlgorithmAttr, digestAlgorithmIdentifier)
 
 	// /SignedInfo/Reference/DigestValue
-	digestValue := ctx.createNamespacedElement(reference, DigestValueTag)
+	digestValue := ctx.createElement(reference, DigestValueTag)
 	digestValue.SetText(base64.StdEncoding.EncodeToString(digest))
 
 	return signedInfo, nil
@@ -271,22 +268,25 @@ func (ctx *SigningContext) ConstructSignature(el *etree.Element, enveloped bool)
 		return nil, err
 	}
 
-	signatureValue := ctx.createNamespacedElement(sig, SignatureValueTag)
+	signatureValue := ctx.createElement(sig, SignatureValueTag)
 	signatureValue.SetText(base64.StdEncoding.EncodeToString(rawSignature))
 
-	keyInfo := ctx.createNamespacedElement(sig, KeyInfoTag)
-	x509Data := ctx.createNamespacedElement(keyInfo, X509DataTag)
-	for _, cert := range certs {
-		x509Certificate := ctx.createNamespacedElement(x509Data, X509CertificateTag)
-		x509Certificate.SetText(base64.StdEncoding.EncodeToString(cert))
+	keyInfo := ctx.createElement(sig, KeyInfoTag)
+	for _, certData := range certs {
+		cert, err := x509.ParseCertificate(certData)
+		if err != nil {
+			return nil, err
+		}
+		keyName := ctx.createElement(keyInfo, KeyNameDataTag)
+		fingerprint := sha256.Sum256(cert.Raw)
+		keyName.SetText(string(hex.EncodeToString(fingerprint[:])))
 	}
 
 	return sig, nil
 }
 
-func (ctx *SigningContext) createNamespacedElement(el *etree.Element, tag string) *etree.Element {
+func (ctx *SigningContext) createElement(el *etree.Element, tag string) *etree.Element {
 	child := el.CreateElement(tag)
-	child.Space = ctx.Prefix
 	return child
 }
 
