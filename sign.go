@@ -27,7 +27,6 @@ type SigningContext struct {
 	// NewSigningContext
 	KeyStore      X509KeyStore
 	IdAttribute   string
-	Prefix        string
 	Canonicalizer Canonicalizer
 
 	// KeyStore is mutually exclusive with signer and certs
