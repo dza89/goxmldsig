@@ -18,6 +18,8 @@ import (
 	"github.com/russellhaering/goxmldsig/etreeutils"
 )
 
+const KeyNameDataTag = "KeyName"
+
 type SigningContext struct {
 	Hash crypto.Hash
 
@@ -270,7 +272,7 @@ func (ctx *SigningContext) ConstructSignature(el *etree.Element, enveloped bool)
 
 	signatureValue := ctx.createElement(sig, SignatureValueTag)
 	signatureValue.SetText(base64.StdEncoding.EncodeToString(rawSignature))
-
+	
 	keyInfo := ctx.createElement(sig, KeyInfoTag)
 	for _, certData := range certs {
 		cert, err := x509.ParseCertificate(certData)
