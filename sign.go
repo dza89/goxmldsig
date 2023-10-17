@@ -167,7 +167,7 @@ func (ctx *SigningContext) constructSignedInfo(el *etree.Element, enveloped bool
 
 	signedInfo := &etree.Element{
 		Tag:   SignedInfoTag,
-		Space: ctx.Prefix,
+	
 	}
 
 	// /SignedInfo/CanonicalizationMethod
@@ -213,14 +213,9 @@ func (ctx *SigningContext) ConstructSignature(el *etree.Element, enveloped bool)
 
 	sig := &etree.Element{
 		Tag:   SignatureTag,
-		Space: ctx.Prefix,
 	}
 
 	xmlns := "xmlns"
-	if ctx.Prefix != "" {
-		xmlns += ":" + ctx.Prefix
-	}
-
 	sig.CreateAttr(xmlns, Namespace)
 	sig.AddChild(signedInfo)
 
