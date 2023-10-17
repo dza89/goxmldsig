@@ -267,16 +267,16 @@ func (ctx *SigningContext) ConstructSignature(el *etree.Element, enveloped bool)
 	signatureValue := ctx.createElement(sig, SignatureValueTag)
 	signatureValue.SetText(base64.StdEncoding.EncodeToString(rawSignature))
 	
-	keyInfo := ctx.createElement(sig, KeyInfoTag)
-	for _, certData := range certs {
-		cert, err := x509.ParseCertificate(certData)
-		if err != nil {
-			return nil, err
-		}
-		keyName := ctx.createElement(keyInfo, KeyNameDataTag)
-		fingerprint := sha256.Sum256(cert.Raw)
-		keyName.SetText(string(hex.EncodeToString(fingerprint[:])))
-	}
+	// keyInfo := ctx.createElement(sig, KeyInfoTag)
+	// for _, certData := range certs {
+	// 	cert, err := x509.ParseCertificate(certData)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	keyName := ctx.createElement(keyInfo, KeyNameDataTag)
+	// 	fingerprint := sha256.Sum256(cert.Raw)
+	// 	keyName.SetText(string(hex.EncodeToString(fingerprint[:])))
+	// }
 
 	return sig, nil
 }
